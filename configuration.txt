@@ -1,0 +1,32 @@
+encoding format:
+torch.float32:(maybe float 16 if I can get a CUDA device)
+    本模型只支持有限种类的方块，主要是建筑方块（它们易于聚类）和常见的自然方块。
+    模型定位是为普通玩家提供一个更快的搭建骨架的方式，而不是完全替代玩家进行建筑设计。应该把细节留给玩家自己。
+    用模型预测红石方块是不可想象的。更别说设计音符盒什么的。
+    自然方块和特殊方块（例如铁块）单独编码。
+    对建筑方块的支持，首先以形状编码，因为形状是建筑方块的主要特征。然后以材质编码，因为材质是建筑方块的重要特征。
+    紧随形状编码的是状态编码。minecraft方块状态极难统一编码，但是其建筑方块由于没有特殊功能，相同形状方块的状态空间一致，这非常好地提供了简短的编解码可能性。
+    这将会形成一系列复合的编码，这种编码方式能较好地反映复合的对象信息，应该能使模型更能理解建筑美学。
+    由于minecraft提供了一系列不同材质的建筑方块（材质数远多于形状），材质编码需要进一步复合处理，例如分为木质和石质等，以确保不同位置的编码在数量上相近。
+    这样，一个上下文长度为4096的transformer模型应该能较好地理解建筑方块，之前的卷积设计可能不再必要，也可能还是要用一个RNN或者CNN来记录更多的上下文信息。
+    现在可以开始设计编码解码程序了。
+    我需要把大量的区块储存信息解码用于训练模型，这很难用python原生解码然后转为numpyndarray。
+    手上的库可以给出mca文件中的区块二进制信息。现在要用C进行查找和解码输出numpy数组。
+    目前已经解决的问题有：区块数据读取，区块数据解析结构，现在要专注于numpy交互。
+    
+Translations to English:
+The encoding format is as follows:
+torch.float32: (maybe float 16 if I can get a CUDA device)
+    This model only supports a limited number of blocks, mainly architectural blocks (which are easy to cluster) and common natural blocks.
+    The purpose of the model is to provide a faster way for ordinary players to build skeletons, rather than completely replacing players in architectural design. The details should be left to players themselves.
+    Predicting redstone blocks is unimaginable. Even designing note blocks is out of the question.
+    Natural blocks and special blocks (such as iron blocks) are encoded separately.
+    Support for architectural blocks is first encoded by shape, as shape is the main feature of architectural blocks. Then by material, as material is an important feature of architectural blocks.
+    The state encoding follows the shape encoding. The Minecraft block state is extremely difficult to encode uniformly, but the architectural blocks, which have no special functions, have a consistent state space for blocks of the same shape, which is very conducive to providing short encoding and decoding possibilities.
+    This will form a series of composite encodings, which should be able to better reflect the information of composite objects and enable the model to better understand architectural aesthetics.
+    Since Minecraft provides a series of architectural blocks with different materials (the number of materials is much greater than the number of shapes), material encoding needs further composite processing, such as dividing them into wooden and stone categories, to ensure that the encodings at different positions are similar in quantity.
+    In this way, a transformer model with a context length of 4096 should be able to better understand architectural blocks, and the previous convolutional design may no longer be necessary, or it may still need to use an RNN or CNN to record more contextual information.
+    Now it is time to design the encoding and decoding programs.
+    I need to decode a large amount of block storage information for training the model, which is difficult to decode using Python's native decoding and then convert it to a numpy ndarray.
+    The libraries I have can give the binary information of the blocks in the mca file. Now I need to use C to search and decode the output numpy array.
+    The problems I have solved so far are: reading block data, parsing block data structure, now I need to focus on numpy interaction.
