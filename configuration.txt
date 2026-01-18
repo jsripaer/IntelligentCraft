@@ -1,3 +1,6 @@
+###   WARING   ###
+This file may not be accurate as change has been made when writing "encoding.json"!
+
 encoding format:
 torch.float32:(maybe float 16 if I can get a CUDA device)
     本模型只支持有限种类的方块，主要是建筑方块（它们易于聚类）和常见的自然方块。
@@ -13,20 +16,125 @@ torch.float32:(maybe float 16 if I can get a CUDA device)
     我需要把大量的区块储存信息解码用于训练模型，这很难用python原生解码然后转为numpyndarray。
     手上的库可以给出mca文件中的区块二进制信息。现在要用C进行查找和解码输出numpy数组。
     目前已经解决的问题有：区块数据读取，区块数据解析结构，现在要专注于numpy交互。
-    
-Translations to English:
-The encoding format is as follows:
-torch.float32: (maybe float 16 if I can get a CUDA device)
-    This model only supports a limited number of blocks, mainly architectural blocks (which are easy to cluster) and common natural blocks.
-    The purpose of the model is to provide a faster way for ordinary players to build skeletons, rather than completely replacing players in architectural design. The details should be left to players themselves.
-    Predicting redstone blocks is unimaginable. Even designing note blocks is out of the question.
-    Natural blocks and special blocks (such as iron blocks) are encoded separately.
-    Support for architectural blocks is first encoded by shape, as shape is the main feature of architectural blocks. Then by material, as material is an important feature of architectural blocks.
-    The state encoding follows the shape encoding. The Minecraft block state is extremely difficult to encode uniformly, but the architectural blocks, which have no special functions, have a consistent state space for blocks of the same shape, which is very conducive to providing short encoding and decoding possibilities.
-    This will form a series of composite encodings, which should be able to better reflect the information of composite objects and enable the model to better understand architectural aesthetics.
-    Since Minecraft provides a series of architectural blocks with different materials (the number of materials is much greater than the number of shapes), material encoding needs further composite processing, such as dividing them into wooden and stone categories, to ensure that the encodings at different positions are similar in quantity.
-    In this way, a transformer model with a context length of 4096 should be able to better understand architectural blocks, and the previous convolutional design may no longer be necessary, or it may still need to use an RNN or CNN to record more contextual information.
-    Now it is time to design the encoding and decoding programs.
-    I need to decode a large amount of block storage information for training the model, which is difficult to decode using Python's native decoding and then convert it to a numpy ndarray.
-    The libraries I have can give the binary information of the blocks in the mca file. Now I need to use C to search and decode the output numpy array.
-    The problems I have solved so far are: reading block data, parsing block data structure, now I need to focus on numpy interaction.
+
+    首先得到一个中心坐标
+    向xyz方向各延伸8个方块，得到的相对坐标取值为[-7,-7,-7]-[8,8,8]
+    #应该除以4加4以使模型编码范围大致归一
+    下一位是模型编码：
+        #按照状态数量排序
+        1：完整方块
+        2：半砖
+        3：围墙（包括金属和玻璃）
+        4：楼梯
+            下一位是状态编码：
+            #无此属性则默认取0
+            #特殊项：由运行时得到的数据决定
+            含水（0/1）#完整方块不允许含水（包括树叶）
+            轴向（0，1，2）#默认取0
+            方向（0，3）#默认取0
+            形状（0，4）#仅楼梯
+            half（0，3）#仅半砖和楼梯
+            #共四位
+    材质编码：
+        #难点在于不同材质类型需要共享编码范围
+        自然，金属（尤其是铜），颜色方块，木质，石质，(0-4)
+        木质
+            常见
+                橡木，云杉木，桦木，丛林，金合欢，深色橡木
+            罕见
+                苍白橡木，红木，绯红木，诡异木，竹制
+            种类
+                原木，削皮原木，木方，削皮木方，木板#仅此项含有形状编码
+        石质
+            自然
+                常见
+                    石，圆石，安山岩，闪长岩，
+                    花岗岩，苔石，沙石，红沙石，砖
+                罕见
+                    石英，玄武岩，末地石，紫珀砖，
+                    海晶石，暗海晶石，黑石，地狱岩[0,0]-[3,3]
+            人工
+                磨制，堑制，平滑，砖（0-3）
+        金属
+            青金石，绿宝石，钻石，铁，金，煤（？），
+            铜，氧化铜，中度氧化铜，严重氧化铜（0-9）
+            #应该除以2以使模型编码范围大致归一
+        颜色方块
+            玻璃，玻璃板，混凝土，羊毛
+                下一位是颜色编码：
+                #颜色编码必须人工完成，至少支持16种颜色
+                #除了颜色方块，其它方块颜色编码应于其所在环境编码相近
+                按照Minecraft颜色：
+                白，淡灰，灰，黑，浅蓝，蓝，青，紫，绿，黄绿，粉，红，品红，橙，棕色
+                [0,0]-[3,3]
+        自然
+            砾石，沙，沙砾，耕地，缠根泥土，泥土（草），灰化土，砂土，红沙，雪，草径，树叶，仙人掌，黑曜石，水，岩浆
+
+Translation of AI:
+encoding format:
+torch.float32: (maybe float16 if I can get a CUDA device)
+    This model only supports a limited variety of blocks, mainly building blocks (which are easy to cluster) and common natural blocks.
+    The model is positioned to provide regular players with a faster way to create scaffolds, rather than completely replacing players for building design. Details should be left to the players themselves.
+    It's unimaginable to use the model to predict redstone blocks, let alone design note blocks and so on.
+    Natural blocks and special blocks (for example, iron blocks) are encoded separately.
+    For building blocks support, shape encoding is used first because shape is the main feature of building blocks. Then material encoding is used because material is an important feature of building blocks.
+    Following the shape encoding is state encoding. Minecraft block states are extremely difficult to encode uniformly, but since building blocks don't have special functions, blocks of the same shape have consistent state spaces, which provides a good possibility for concise encoding and decoding.
+    This will form a series of compound encodings. This encoding method can better reflect composite object information and should enable the model to better understand architectural aesthetics.
+    Since Minecraft provides a variety of building blocks with different materials (material types far outnumber shape types), material encoding needs further compound processing, such as dividing into wood and stone types, to ensure that encodings in different positions are similar in quantity.
+    This way, a transformer model with a context length of 4096 should be able to better understand building blocks. The previous convolutional design may no longer be necessary, or it might still be necessary to use an RNN or CNN to record more contextual information.
+    Now I can start designing the encoding and decoding programs.
+    I need to decode a large amount of chunk storage information for training the model, which would be difficult to decode natively in Python and then convert to numpy arrays.
+    The available libraries can give binary information of chunks in mca files. Now I need to use C to find and decode and output numpy arrays.
+    Currently solved problems include: chunk data reading, chunk data parsing structure. Now I need to focus on numpy interaction.
+
+    First, get a center coordinate
+    Extend 8 blocks in each xyz direction, the resulting relative coordinates range from [-7,-7,-7] to [8,8,8]
+    # Should be divided by 4 and added 4 to roughly normalize the model encoding range
+    Next is the model encoding:
+        # Sorted by state count
+        1: Full block
+        2: Slab
+        3: Wall (including metal and glass)
+        4: Stairs
+            Next is the state encoding:
+            # Default to 0 if this attribute doesn't exist
+            # Special items: determined by runtime data
+            Waterlogged (0/1) # Full blocks cannot be waterlogged (including leaves)
+            Orientation (0, 3) # Default to 0
+            Shape (0, 4) # Only for stairs
+            Half (0, 2) # Only for slabs and stairs
+            # Total of 4 bits
+    Material encoding:
+        # The difficulty is that different material types need to share the encoding range
+        Natural, Metal (especially copper), Colored blocks, Wood, Stone (0-3)
+        Wood
+            Common
+                Oak, Spruce, Birch, Jungle, Acacia, Dark Oak
+            Rare
+                Mangrove, Cherry, Crimson, Warped, Bamboo
+            Types
+                Log, Stripped log, Wood, Stripped wood, Planks # Only this type contains shape encoding
+        Stone
+            Natural
+                Common
+                    Stone, Cobblestone, Andesite, Diorite,
+                    Granite, Mossy, Sandstone, Red Sandstone, Brick
+                Rare
+                    Quartz, Basalt, End Stone, Purpur,
+                    Prismarine, Dark Prismarine, Blackstone, Netherrack [0,0]-[3,3]
+            Artificial
+                Smooth, Chiseled, Polished, Brick (0-3)
+        Metal
+            Lapis Lazuli, Emerald, Diamond, Iron, Gold, Coal (?),
+            Copper, Oxidized Copper, Medium Oxidized Copper, Exposed Copper (0-9)
+            # Should be divided by 2 to roughly normalize the model encoding range
+        Colored blocks
+            Glass, Glass pane, Concrete, Wool
+                Next is the color encoding:
+                # Color encoding must be done manually, supporting at least 16 colors
+                # Except for colored blocks, other blocks' color encoding should be similar to their environment
+                According to Minecraft colors:
+                White, Light Gray, Gray, Black, Light Blue, Blue, Cyan, Purple, Green, Lime, Pink, Red, Magenta, Orange, Brown
+                [0,0]-[3,3]
+        Natural
+            Gravel, Sand, Red Sand, Farmland, Rooted Dirt, Dirt (Grass), Podzol, Coarse Dirt, Red Sand, Snow, Grass Path, Leaves, Moss, Cactus, Obsidian, Water, Lava

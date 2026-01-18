@@ -1,6 +1,5 @@
-# AutoFramework
+# IntelligentCrfat
 Try to build AI tool for Minecraft architectures.
-
 
 The author isn't experienced neither in AI nor Java and Python, so the framework is not very good. I will try to improve it in the future.
 Seggestions are sincerely welcomed.
@@ -12,6 +11,6 @@ As the registry of Minecraft blocks is huge, only the most common building block
 
 # TODO
 As you can see, the project is still in the early stage with ideas and ambitions. The following tasks are planned to be done in the future:
-- [] Transform the worlds to Numpy ndarrays for later training.
-- [] set up a transformer model and trian it on data in the first step.
-- [] Build a Mod for Minecraft(may be Neoforge?) to gaining data when the game is running and make respond to the model.
+-  Transform the worlds to Numpy ndarrays for later training.
+-  set up a transformer model and trian it on data in the first step.
+-  Build a Mod for Minecraft(may be Neoforge?) to gaining data when the game is running and make respond to the model.
