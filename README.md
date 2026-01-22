@@ -9,6 +9,8 @@ This project is a model for building Minecraft architectures automatically. It a
 Hopefully, an agent can help validate vague ideas and save time when doing huge costructions by filling the samilar structures automatically.
 As the registry of Minecraft blocks is huge, only the most common building blocks are surpported in this project.
 
+Till now dependencies including:
+    Numpy, Pytorch, mcapy(but I attached a simplified one in ./mca).
 # TODO
 As you can see, the project is still in the early stage with ideas and ambitions. The following tasks are planned to be done in the future:
 -  Transform the worlds to Numpy ndarrays for later training.
