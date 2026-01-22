@@ -17,13 +17,13 @@ class Embedding(nn.Module):
         enlarge the encoding dimension, making it sparse and having more complex linear features
         '''
         super(Embedding, self).__init__()
-        self.embedding = nn.Linear(12, 128)
+        self.embedding = nn.Linear(18, 128)
         self.optimizer = torch.optim.Adagrad(self.parameters(), lr=LEARN_RATE*2)
 
     def forward(self, x):
         '''
         return a new tensor, in which each row is the embedding of the input row
-        x:(4096, 12)
+        x:(4096, 18)
         return:(4096, 128)
         '''
         return self.embedding(x)
@@ -31,7 +31,7 @@ class Embedding(nn.Module):
 class Output(nn.Module):
     def __init__(self):
         super(Output, self).__init__()
-        self.linear = nn.Linear(128, 12)
+        self.linear = nn.Linear(128, 18)
 
     def forward(self, x):
         return self.linear(x)
@@ -39,7 +39,7 @@ class Output(nn.Module):
 
 class Decider(nn.Module):
     def __init__(self):
-        #input:(4096, 12)
+        #input:(4096, 18)
         '''
         when training, there must be lots of 'natural' data, which should not 
         be used to train the model.
@@ -53,7 +53,7 @@ class Decider(nn.Module):
         super(Decider, self).__init__()
         self.squeeze = nn.Parameter(torch.randn((1,4096),dtype=torch.float32))
         self.linear = nn.Sequential(
-            nn.Linear(12, 512),
+            nn.Linear(18, 512),
             nn.ReLU(),#4096*512
             nn.BatchNorm1d(512),
             nn.Linear(512, 128),
@@ -65,6 +65,8 @@ class Decider(nn.Module):
         self.optimizer = torch.optim.Adagrad(self.parameters(), lr=LEARN_RATE/2)
 
     def forward(self, x):
+        if torch.all(x == 0):
+            return torch.tensor(0.0)#empty section
         x =  self.linear(x)#4096*1
         return torch.sigmoid(self.squeeze @ x)#1*1
 
@@ -77,7 +79,7 @@ class DecoderLayer(nn.TransformerDecoderLayer):
 
 class Model(nn.Module):
     def __init__(self):
-        #input:(4096, 12)
+        #input:(4096, 18)
         '''
         Transformer is the core of our model.
         But due to performance and memory limitation, 
@@ -90,31 +92,30 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.decider = Decider()
         self.embedding = Embedding()
+        #HOW ON EARTH do I need a position encoding here???
 
         self.transformerdecodelayer = DecoderLayer(d_model=128, nhead=4, dim_feedforward=512, dropout=0.05, activation='relu')
         self.transformer = nn.TransformerDecoder(num_layers=8, decoder_layer=self.transformerdecodelayer, norm=nn.LayerNorm(128))
 
         self.output = Output()
 
-        self.memorystack = torch.zeros((8,4096,12),dtype=torch.float32) #a simple memory stack
+        self.memorystack = torch.zeros((8,4096,18),dtype=torch.float32) #a simple memory stack
         self.lossfunc = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=LEARN_RATE)
+        self.optimizer = torch.optim.Adagrad(self.parameters(), lr=LEARN_RATE)
     
     def forward(self, src):
         '''
-        src are both tensor with shape (4096, 12)
+        src are both tensor with shape (4096, 18)
         with every src, the model should predict for 4096 times
         and update its memory stack with the new prediction
-        the model is to modify the input src to a better version
-        thus mask doesn't matter here
-        return: tensor with shape (1, 12)
+        return: tensor with shape (1, 18)
         '''
         if self.decider(src).item() < 0.2:
             return EndofBlock #skip the useless data
-        src = self.capWithMemory(src)#(8192,12)
+        src = self.capWithMemory(src)#(8192,18)
         src = self.embedding(src)#(8192,128)
         src = self.transformer((1,src, src))#(1,8192,128)
-        src = self.output(src)#(1,12)
+        src = self.output(src)#(1,18)
         return src
     
     def load_embeddings(self, embeddings):
@@ -145,8 +146,8 @@ class Model(nn.Module):
         ,3,2,1], and the output is softmax([4,3,2,1]).
         This allows newer memories to have higher weights
         while reducing the amount of computation.
-        x: tensor with shape (4096, 12)
-        return: tensor with shape (8192, 12)
+        x: tensor with shape (4096, 18)
+        return: tensor with shape (8192, 18)
         '''
         #omit the empty memory
         memory_size = 0
@@ -155,10 +156,10 @@ class Model(nn.Module):
                 continue
             memory_size += 1
         if memory_size == 0:
-            return torch.cat([x,torch.zeros((4096, 12), dtype=torch.float32)],dim=0)#(8192,12)
+            return torch.cat([x,torch.zeros((4096, 18), dtype=torch.float32)],dim=0)#(8192,18)
         
         weights = F.softmax(torch.arange(memory_size,0,-1).float(), dim=0)#(1, memory_size)
         weights = weights.view(-1,1,1)
-        weighted_memory = torch.sum(self.memorystack[:memory_size] * weights.unsqueeze(2), dim=0)#(4096,12)
-        return torch.cat((weighted_memory, x), dim=0)#(8192,12)
+        weighted_memory = torch.sum(self.memorystack[:memory_size] * weights.unsqueeze(2), dim=0)#(4096,18)
+        return torch.cat((weighted_memory, x), dim=0)#(8192,18)
 

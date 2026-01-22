@@ -9,35 +9,35 @@
     },
     "state": {
         "waterlogged": {
-            "true": [0,2,0],
-            "flase": [1,2,0]
+            "true": 1,
+            "flase": 0
         },
         "axis":{
-            "x":[2,2,0],
-            "y":[0,0,1],
-            "z":[1,0,1]
+            "x":0,
+            "y":1,
+            "z":2
         },
         "facing": {
-            "east": [2,0,1],
-            "west": [0,1,1],
-            "south": [1,1,1],
-            "north": [0,2,1]
+            "east": 0,
+            "west": 1,
+            "south": 2,
+            "north": 3
         },
         "shape": {
-            "straight": [1,2,1],
-            "inner_left": [2,2,1],
-            "inner_right": [0,0,2],
-            "outer_left": [1,0,2],
-            "outer_right": [0,1,2]
+            "straight": 0,
+            "inner_left": 1,
+            "inner_right": 2,
+            "outer_left": 3,
+            "outer_right": 4
         },
         "type": {
-            "bottom": [1,2,2],
-            "top": [2,2,2],
-            "double": [0,0,3]
+            "bottom": 0,
+            "top": 1,
+            "double": 2
         },
         "half": {
-            "bottom": [1,2,2],
-            "top": [2,2,2]
+            "bottom": 0,
+            "top": 1
         }
     },
     "name": {

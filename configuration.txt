@@ -71,6 +71,15 @@ torch.float32:(maybe float 16 if I can get a CUDA device)
         自然
             砾石，沙，沙砾，耕地，缠根泥土，泥土（草），灰化土，砂土，红沙，雪，草径，树叶，仙人掌，黑曜石，水，岩浆
 
+训练计划：
+    1.Decider层：以无建筑和有建筑数据训练, 学会判断是否应该进行建筑生成
+        若为自然数据,  则输出0, 否则输出1
+        输出值非常接近1时, 不进行生成（建筑已完整）, 除非手动指定生成
+    2.Embedding层：有建筑数据训练, 学会编码建筑方块
+    3.Output层：有建筑数据训练, 学会解码建筑方块, 稍晚于Embedding层训练 
+    4.生成器层：最后训练, 学会生成建筑方块
+
+
 Translation of AI:
 encoding format:
 torch.float32: (maybe float16 if I can get a CUDA device)
