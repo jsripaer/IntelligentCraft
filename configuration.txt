@@ -80,7 +80,7 @@ torch.float32:(maybe float 16 if I can get a CUDA device)
     4.生成器层：最后训练, 学会生成建筑方块
 
 
-Translation of AI:
+Translation from AI:
 encoding format:
 torch.float32: (maybe float16 if I can get a CUDA device)
     This model only supports a limited variety of blocks, mainly building blocks (which are easy to cluster) and common natural blocks.

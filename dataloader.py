@@ -43,18 +43,30 @@ class DataLoaderFromFiles:
     
 class TrainFuncs:
     @staticmethod
-    def train_step(model, data, target, criterion, optimizer):
+    def train_step(model, target:np.ndarray[4096,18], optimizer):
         '''On training, in every data , randomly choose few lines
         and fill them into air.
         This take the effects as masks in other models, but there,
         I hope the model can pay attention to every position in the data,
         which is more like the real circumastance.'''
+        data = target
+        for i in np.random.randint(0,4096,16):
+            data[i.item()] += np.random.rand(1,18)
+        #disturb the data
         model.train()
-        optimizer.zero_grad()
         output = model(data)
-        loss = criterion(output, target)
-        loss.backward()
-        optimizer.step()
+
+        if output == None:
+            return None
+        
+        aveloss = 0
+        for i in range(4096):
+            optimizer.zero_grad()
+            loss = model.lossfunc(output, target[i])
+            aveloss += loss.item()
+            loss.backward()
+            optimizer.step()
+
         return loss.item()
     
     @staticmethod

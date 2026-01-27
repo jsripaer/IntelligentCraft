@@ -52,6 +52,7 @@ class Decider(nn.Module):
         '''
         super(Decider, self).__init__()
         self.squeeze = nn.Parameter(torch.randn((1,4096),dtype=torch.float32))
+        
         self.linear = nn.Sequential(
             nn.Linear(18, 512),
             nn.ReLU(),#4096*512
@@ -110,18 +111,24 @@ class Model(nn.Module):
         and update its memory stack with the new prediction
         return: tensor with shape (1, 18)
         '''
+
         if self.decider(src).item() < 0.2:
-            return EndofBlock #skip the useless data
-        src = self.capWithMemory(src)#(8192,18)
-        src = self.embedding(src)#(8192,128)
-        src = self.transformer((1,src, src))#(1,8192,128)
-        src = self.output(src)#(1,18)
+            return None #skip the useless data
+        self.memory_update(src)
+        out = torch.zeros(4096,18)
+
+        for i in range(4096): 
+            src = self.cap_memory(out)#(8192,18)
+            self.input = src
+            src = self.embedding(src)#(8192,128)
+            src = self.transformer((1,src, src))#(1,8192,128)
+            src = self.output(src)#(1,18)
         return src
     
     def load_embeddings(self, embeddings):
         self.embedding.embedding.weight.data.copy_(torch.from_numpy(embeddings))
 
-    def memoryUpdate(self, new_memory):
+    def memory_update(self, new_memory):
         '''
         update the memory stack with new memory
         if the stack is full, pop the oldest memory
@@ -130,7 +137,7 @@ class Model(nn.Module):
         self.memorystack = torch.roll(self.memorystack, shifts=-1, dims=0)
         self.memorystack[-1] = new_memory
 
-    def capWithMemory(self, x):
+    def cap_memory(self, x):
         '''
         cap the input with memory stack
         记忆栈会被以下方式加权平均：

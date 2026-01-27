@@ -1,6 +1,7 @@
 import numpy as np
-import mca
+import mca#This library is officially called mcapy.
 import json
+
 
 class RegionAnalyzer:
     def __init__(self, file, world):
@@ -22,70 +23,90 @@ class RegionAnalyzer:
         '''
         name = block.id
         if name == 'air':
-            return np.zeros((1,12),np.float32)
+            return np.zeros((1,18),np.float32)
         properties = block.properties
         encode = []
+        if name == 'gravel':
+            pass
         #process the key related to name
         #model
         for j in self.encode_sequence["model"]:
             if j in name:
-                encode.append(self.encode_sequence["model"][j])
+                encode.extend(self.encode_sequence["model"][j])
                 break
+        if encode == []:
+            encode = [0,0,0]
         #texture
         for j in self.name_sequence['natrue']:
             if j in name:
-                encode.append(self.name_sequence['natrue'][j])
-        for j in self.name_sequence['metal']:
-            if j in name:
-                encode.append(self.name_sequence['metal'][j])
+                encode.extend(self.name_sequence['natrue'][j])
                 break
+            else:
+                for j in self.name_sequence['metal']:
+                    if j in name:
+                        encode.extend(self.name_sequence['metal'][j])
+                        break
         def encoder(s):
             for j in self.name_sequence[s][0]:
                 if j in name:
                     for k in self.name_sequence[s][1]:
                         if k in name:
-                            return self.name_sequence[s][0][j].append(
+                            return self.name_sequence[s][0][j].extend(
                                    self.name_sequence[s][1][k])
         _ = encoder("coloured_block")
         if _ != None:
-            encode.append(_)
-        _ = encoder("wood")
-        if _ != None:
-            encode.append(_)
-        _ = encoder("stone")
-        if _ != None:
-            encode.append(_)
-        if encode == None:
-            return[0 for i in range(6)]#fill 'air' instead
+            encode.extend(_)
+        else:
+            _ = encoder("wood")
+            if _ != None:
+                encode.extend(_)
+            else:
+                _ = encoder("stone")
+                if _ != None:
+                    encode.extend(_)
+        if encode == [0,0,0]:
+            encode.extend([0,0,0])#fill 'air' instead
         #states
-        for j in self.encode_sequence['states']:
-            for k in j:
+        for j in self.encode_sequence['state']:
+            l = len(encode)
+            for k in self.encode_sequence['state'][j]:
                 if k in properties:
-                    encode.append(self.encode_sequence['states'][j][k])
+                    encode.append(self.encode_sequence['state'][j][k])
                     break
+            if len(encode) == l:
                 encode.append(0)
         #coords
-        if len(coords) != 3:
-            raise ValueError("Invalid coords")
-        encode.append([divmod(i,4) for i in coords])
-        return np.array(encode,dtype=np.float32)
+        for i in range(3):
+            encode.extend(divmod(coords[i],4))
+        return np.array(encode,dtype=np.float32).reshape((1,18))
+    
+    def encode_section(self, chunk, Y):
 
-    def encode_chunk(self, x, z):
-        chunk = self.region.get_chunk(x, z)
-        data = []
-        gen  = chunk.stream_chunk()
-        i = 0
-        while True:
-            Y = i % 4096
-            y,z = divmod(Y,256)
+        sec = chunk.stream_blocks(Y)
+        data0 = self.encode_block(next(sec),coords=(0,0,0))
+        i = 1
+        while i < 4096:
+            y,z = divmod(i,256)
             z = z // 16
-            x = Y % 16
+            x = i % 16
             try:
-                data.append(self.encode_block(next(gen),(x,y,z)))
+                data0 = np.vstack((data0,self.encode_block(next(sec),(x,y,z))))
             except StopIteration:
                 break
+            except IndexError:
+                data0 = np.vstack((data0,np.zeros((1,18))))
             i += 1
-        return np.array(data)
+        m = 4096 - data0.shape[0]
+        if m > 0:
+            data0 = np.vstack((data0,np.zeros((m,18))))
+        return data0.reshape((1,4096,18))
+
+    def encode_chunk(self, x, z):
+        i = 0
+        chunk = self.region.get_chunk(x,z)
+        data = self.encode_section(chunk,-4)
+        for Y in range(-3,19):
+            data = np.vstack((data,self.encode_section(chunk , Y)))
         
     def encode_region(self):
         region = []
@@ -93,3 +114,4 @@ class RegionAnalyzer:
             for j in range(32):
                 region.append(self.encode_chunk(i,j))
         np.savez(f"./data/{self.world}/{self.file[:-3]}npz")
+

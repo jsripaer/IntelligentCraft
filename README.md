@@ -5,7 +5,7 @@ The author isn't experienced neither in AI nor Java and Python, so the framework
 Seggestions are sincerely welcomed.
 
 # Description
-This project is a model for building Minecraft architectures automatically. It aims to help single players save time and effort to build houses.
+This project is a model for building Minecraft architectures automatically. It aims to help single players save time and efforts to build houses.
 Hopefully, an agent can help validate vague ideas and save time when doing huge costructions by filling the samilar structures automatically.
 As the registry of Minecraft blocks is huge, only the most common building blocks are surpported in this project.
 
